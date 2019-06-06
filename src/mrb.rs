@@ -1,7 +1,7 @@
 use mruby_sys::*;
 use std::error::Error;
 
-pub type MRubyValueResult = Result<Value, Box<Error>>;
+pub type ValueResult = Result<Value, Box<Error>>;
 
 #[derive(Debug)]
 pub struct State {
@@ -27,7 +27,7 @@ impl State {
         }
     }
 
-    pub fn load_string(&mut self, string: &str) -> MRubyValueResult {
+    pub fn load_string(&mut self, string: &str) -> ValueResult {
         unsafe {
             let c_string = std::ffi::CString::new(string)?;
             let mut mrb_value = mrb_load_string(self.mrb_state, c_string.as_ptr());
