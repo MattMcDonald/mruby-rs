@@ -31,7 +31,7 @@ impl State {
         unsafe {
             let c_string = std::ffi::CString::new(string)?;
             let mut mrb_value = mrb_load_string(self.mrb_state, c_string.as_ptr());
-            
+
             Ok(match mrb_value.tt {
                 mruby_sys::mrb_vtype_MRB_TT_FIXNUM => Value::Fixnum(mrb_value.value.i),
                 mruby_sys::mrb_vtype_MRB_TT_STRING => {
@@ -85,7 +85,7 @@ mod tests {
             Value::String(s) => s,
             _ => bail!("failed"),
         };
-        
+
         assert_eq!("hello", val);
         Ok(())
     }
