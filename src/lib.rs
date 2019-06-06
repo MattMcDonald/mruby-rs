@@ -5,9 +5,18 @@ extern crate mruby_sys;
 use std::error::Error;
 use mruby_sys::*;
 
+#[derive(Debug)]
 pub struct MRuby{
     mrb_state: *mut mruby_sys::mrb_state
 }
+
+
+#[derive(Debug, Clone)]
+pub enum MRubyValue {
+    Fixnum(i64),
+    String(String)
+}
+
 
 impl MRuby {
      pub fn new() -> Result<MRuby, ()>{
@@ -22,15 +31,21 @@ impl MRuby {
         }       
     }
 
-    pub fn load_string(&mut self, string: &str) -> Result<i64, Box<Error>>{
+    pub fn load_string(&mut self, string: &str) -> Result<MRubyValue, Box<Error>>{
         unsafe{
             let c_string = std::ffi::CString::new(string)?;
-            let result=  mrb_load_string(self.mrb_state, c_string.as_ptr());
+            let mut result=  mrb_load_string(self.mrb_state, c_string.as_ptr());
             match result.tt {
                 mruby_sys::mrb_vtype_MRB_TT_FIXNUM  => {
-                    return Ok(result.value.i)
+                     Ok(MRubyValue::Fixnum(result.value.i))
+                },
+                mruby_sys::mrb_vtype_MRB_TT_STRING  => {
+                    let ptr = mruby_sys::mrb_string_value_cstr(self.mrb_state, &mut result);
+                    let c_string = std::ffi::CStr::from_ptr(ptr as *const i8);
+                    let string = c_string.to_str()?;
+                    Ok(MRubyValue::String(string.to_string()))
                 }
-                _ => bail!("Only fixnums are supported right now")
+                _ => bail!("Can't convert type from Ruby to Rust")
             }
         }
     }
@@ -44,7 +59,6 @@ impl Drop for MRuby {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -56,8 +70,26 @@ mod tests {
     #[test]
     fn can_add_1_and_1() -> Result<(), Box<Error>>{
         let mut mruby = MRuby::new().expect("Can't make a new mruby");
-        let result = mruby.load_string("1 + 1")?;
-        assert_eq!(2, result);
+        let result =mruby.load_string("1 + 1")?;
+        
+        let val = match result {
+            MRubyValue::Fixnum(i) => i,
+            _ => -1
+        };
+        assert_eq!(2, val);
+        Ok(())
+    }
+
+   #[test]
+    fn can_get_a_string() -> Result<(), Box<Error>>{
+        let mut mruby = MRuby::new().expect("Can't make a new mruby");
+        let result = mruby.load_string("'hello'")?;
+        
+        let val = match result {
+            MRubyValue::String(s) => s,
+            _ => bail!("failed")
+        };
+        assert_eq!("hello", val);
         Ok(())
     }
 
@@ -65,7 +97,6 @@ mod tests {
     #[test]
     fn returns_error_if_unsupported_type() -> Result<(), Box<Error>>{
         let mut mruby = MRuby::new().expect("Can't make a new mruby");
-        mruby.load_string("'2'").expect_err("Currently we only support ints");
         mruby.load_string("1.1").expect_err("Currently we only support ints");
         Ok(())
     }

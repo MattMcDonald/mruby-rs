@@ -5,5 +5,5 @@ authors = ["Matt McDonald <mail.matt.mcdonald@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-mruby-sys = "0.1.1"
+mruby-sys = "0.2.0"
 simple-error = "0.2.0"
